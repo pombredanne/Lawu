@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 __all__ = (
     'parse_classfile',
+    'parse_attribute_table',
     'ParseMode'
 )
 

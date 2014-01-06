@@ -1,253 +1,146 @@
-# -*- coding: utf8 -*-
-__all__ = ('ClassFile', 'ClassVersion')
-from struct import pack, unpack
-from collections import namedtuple
+# -*- coding: utf-8 -*-
+__all__ = (
+    'parse_classfile',
+)
+
+from itertools import repeat
+from struct import Struct
+
+from jawa.errors import ParsingException
 
 
-from jawa.constants import ConstantPool
-from jawa.fields import FieldTable
-from jawa.methods import MethodTable
-from jawa.attribute import AttributeTable
-from jawa.util.flags import Flags
+s_uint16 = Struct('>H').unpack
+s_uint32 = Struct('>I').unpack
+s_int16 = Struct('>h').unpack
+s_int32 = Struct('>i').unpack
+s_int64 = Struct('>q').unpack
+s_float = Struct('>f').unpack
+s_double = Struct('>d').unpack
 
 
-class ClassVersion(namedtuple('ClassVersion', ['major', 'minor'])):
-    __slots__ = ()
-
-    @property
-    def human(self):
-        """
-        A human-readable string identifying this version, or ``None``
-        if it is unknown.
-        """
-        return {
-            0x33: 'J2SE_7',
-            0x32: 'J2SE_6',
-            0x31: 'J2SE_5',
-            0x30: 'JDK1_4',
-            0x2F: 'JDK1_3',
-            0x2E: 'JDK1_2',
-            0x2D: 'JDK1_1',
-        }.get(self.major, None)
-
-
-class ClassFile(object):
+def parse_classfile(fobj):
     """
-    Implements the JVM ClassFile (files typically ending in ``.class``).
+    Parses a JVM ClassFile per the The Java Virtual Machine
+    Specification, Java SE 7 Edition.
 
-    To open an existing ClassFile::
+    The results of this method should be easily serialized, such
+    as to JSON for a web service.
 
-        from jawa import ClassFile
-        with open('HelloWorld.class') as fin:
-            cf = ClassFile(fin)
-
-    To save a newly created or modified ClassFile::
-
-        with open('HelloWorld.class', 'wb') as fout:
-            cf.save(fout)
-
-    To create a new ClassFile, use the helper :meth:`~ClassFile.create`::
-
-        from jawa import ClassFile
-        cf = ClassFile.create('HelloWorld')
-        with open('HelloWorld.class', 'wb') as fout:
-            cf.save(fout)
-
-    :meth:`~ClassFile.create` sets up some reasonable defaults equivelent to:
-
-    .. code-block:: java
-
-        public class HelloWorld extends java.lang.Object{
-        }
-
-    :param fio: any file-like object providing ``.read()``.
+    :param fobj: Any file-like object providing `read()`.
+    :rtype: dict
     """
-    #: The JVM ClassFile magic number.
-    MAGIC = 0xCAFEBABE
+    # NOTE: This method is the major bottleneck for almost all
+    #       workflows. It has been optimized and line-by-line
+    #       profiled to ensure that ConstantPool parsing is as fast
+    #       as possible in pure-python, so that a search index can be
+    #       quickly built. In its current form, the majority of the
+    #       time is spent in read(). Unfortunately, that results
+    #       in very ugly code. The original, slow version of this
+    #       method was only 16 lines. </excuse>
+    read = fobj.read
 
-    def __init__(self, fio=None):
-        # Default to J2SE_7
-        self._version = ClassVersion(0x32, 0)
-        self._constants = ConstantPool()
-        self._access_flags = Flags('>H', {
-            'acc_public': 0x0001,
-            'acc_final': 0x0010,
-            'acc_super': 0x0020,
-            'acc_interface': 0x0200,
-            'acc_abstract': 0x0400,
-            'acc_synthetic': 0x1000,
-            'acc_annotation': 0x2000,
-            'acc_enum': 0x4000
-        })
-        self._this = 0
-        self._super = 0
-        self._interfaces = []
-        self._fields = FieldTable(self)
-        self._methods = MethodTable(self)
-        self._attributes = AttributeTable(self)
+    if s_uint32(read(4))[0] != 0xCAFEBABE:
+        raise ParsingException('bad magic value')
 
-        if fio:
-            self._from_io(fio)
+    cf = {
+        'version': [
+            # minor version
+            s_uint16(read(2))[0],
+            # major version
+            s_uint16(read(2))[0]
+        ][::-1],
+        'constant_pool': [None]
+    }
 
-    @classmethod
-    def create(cls, this, super_='java/lang/Object'):
-        """
-        A utility method which sets up reasonable defaults for a new public
-        class.
+    constant_pool = cf['constant_pool']
+    constant_pool_iter = repeat(None, s_uint16(read(2))[0] - 1)
 
-        :param this: The name of this class.
-        :param super_: The name of this class's superclass.
-        """
-        cf = ClassFile()
-        cf.access_flags.acc_public = True
-        cf.access_flags.acc_super = True
+    for __ in constant_pool_iter:
+        tag = ord(read(1))
 
-        cf._this = cf.constants.create_class(this).index
-        cf._super = cf.constants.create_class(super_).index
+        if tag == 1:
+            # CONSTANT_Utf8
+            constant_pool.append((
+                tag,
+                read(
+                    # Length prefix
+                    s_uint16(read(2))[0]
+                )
+            ))
+        elif tag == 7:
+            # CONSTANT_Class
+            constant_pool.append((
+                tag,
+                # name_index
+                s_uint16(read(2))[0]
+            ))
+        elif tag in (9, 10, 11):
+            # CONSTANT_FieldRef, CONSTANT_MethodRef, and
+            # CONSTANT_InterfaceMethodRef.
+            constant_pool.append((
+                tag,
+                # class_index
+                s_uint16(read(2))[0],
+                # name_and_type_index
+                s_uint16(read(2))[0]
+            ))
+        elif tag == 8:
+            # CONSTANT_String
+            constant_pool.append((
+                tag,
+                # string_index
+                s_uint16(read(2))[0]
+            ))
+        elif tag == 3:
+            # CONSTANT_Integer
+            constant_pool.append((
+                tag,
+                # value
+                s_int32(read(4))[0]
+            ))
+        elif tag == 4:
+            # CONSTANT_Float
+            constant_pool.append((
+                tag,
+                # value
+                s_float(read(4))[0]
+            ))
+        elif tag == 5:
+            # CONSTANT_Long. Counts as two entries in the pool.
+            constant_pool.extend((
+                (
+                    tag,
+                    # value
+                    s_int64(read(8))[0]
+                ),
+                # Pool padding, since CONSTANT_Long counts as
+                # two items.
+                None
+            ))
+            next(constant_pool_iter)
+        elif tag == 6:
+            # CONSTANT_Double. Counts as two entries in the pool.
+            constant_pool.extend((
+                (
+                    tag,
+                    # value
+                    s_double(read(8))[0]
+                ),
+                # Pool padding, since CONSTANT_Long counts as
+                # two items.
+                None
+            ))
+            next(constant_pool_iter)
+        elif tag == 12:
+            # CONSTANT_NameAndType
+            constant_pool.append((
+                tag,
+                # name_index
+                s_uint16(read(2))[0],
+                # descriptor_index
+                s_uint16(read(2))[0]
+            ))
+        else:
+            raise ParsingException('invalid tag type')
 
-        return cf
-
-    def save(self, fout):
-        """
-        Saves the class to the file-like object `fout`.
-        """
-        write = fout.write
-
-        write(pack('>IHH',
-            ClassFile.MAGIC,
-            self.version.minor,
-            self.version.major
-        ))
-
-        self._constants._to_io(fout)
-
-        write(self.access_flags.pack())
-        write(pack('>HHH{0}H'.format(len(self._interfaces)),
-            self._this,
-            self._super,
-            len(self._interfaces),
-            *self._interfaces
-        ))
-
-        self._fields._to_io(fout)
-        self._methods._to_io(fout)
-        self._attributes._to_io(fout)
-
-    # ------------
-    # Internal
-    # ------------
-
-    def _from_io(self, fio):
-        """
-        Loads an existing JVM ClassFile from any file-like object.
-        """
-        read = fio.read
-
-        if unpack('>I', fio.read(4))[0] != ClassFile.MAGIC:
-            raise ValueError('invalid magic number')
-
-        # The version is swapped on disk to (minor, major), so swap it back.
-        self.version = unpack('>HH', fio.read(4))[::-1]
-
-        self._constants._from_io(fio)
-
-        # ClassFile access_flags, see section #4.1 of the JVM specs.
-        self.access_flags.unpack(read(2))
-
-        # The CONSTANT_Class indexes for "this" class and its superclass.
-        # Interfaces are a simple list of CONSTANT_Class indexes.
-        self._this, self._super, interfaces_count = unpack('>HHH', read(6))
-        self._interfaces = unpack(
-            '>{0}H'.format(interfaces_count),
-            read(2 * interfaces_count)
-        )
-
-        self._fields._from_io(fio)
-        self._methods._from_io(fio)
-        self._attributes._from_io(fio)
-
-    # -------------
-    # Properties
-    # -------------
-
-    @property
-    def version(self):
-        """
-        The :class:`~jawa.cf.ClassVersion` for this class.
-
-        Example::
-
-            >>> cf.version = 51, 0
-            >>> print(cf.version)
-            ClassVersion(major=51, minor=0)
-            >>> print(cf.version.major)
-            51
-        """
-        return self._version
-
-    @version.setter
-    def version(self, (major, minor)):
-        self._version = ClassVersion(major, minor)
-
-    @property
-    def constants(self):
-        """
-        The :class:`~jawa.cp.ConstantPool` for this class.
-        """
-        return self._constants
-
-    @property
-    def access_flags(self):
-        return self._access_flags
-
-    @property
-    def this(self):
-        """
-        The :class:`~jawa.constants.ConstantClass` which represents this class.
-        """
-        return self.constants.get(self._this)
-
-    @this.setter
-    def this(self, value):
-        self._this = value.index
-
-    @property
-    def super_(self):
-        """
-        The :class:`~jawa.constants.ConstantClass` which represents this
-        class's superclass.
-        """
-        return self.constants.get(self._super)
-
-    @super_.setter
-    def super_(self, value):
-        self._super = value.index
-
-    @property
-    def interfaces(self):
-        """
-        A list of direct superinterfaces of this class as indexes into
-        the constant pool, in left-to-right order.
-        """
-        return self._interfaces
-
-    @property
-    def fields(self):
-        """
-        The :class:`~jawa.fields.FieldTable` for this class.
-        """
-        return self._fields
-
-    @property
-    def methods(self):
-        """
-        The :class:`~jawa.methods.MethodTable` for this class.
-        """
-        return self._methods
-
-    @property
-    def attributes(self):
-        """
-        The :class:`~jawa.attribute.AttributeTable` for this class.
-        """
-        return self._attributes
+    return cf

@@ -4,6 +4,7 @@ __all__ = (
     'ParseMode'
 )
 
+from base64 import b64encode
 from itertools import repeat
 from struct import Struct
 
@@ -25,6 +26,27 @@ class ParseMode(object):
     PARSE_CONSTANTS = 20
     #: Stop parsing the ClassFile after the interface list.
     PARSE_INTERFACES = 30
+    #: Stop parsing the ClassFile after the fields list.
+    PARSE_FIELDS = 40
+    #: Stop parsing the ClassFile after the methods list.
+    PARSE_METHODS = 50
+
+
+def parse_attribute_table(fobj):
+    read = fobj.read
+
+    attributes_count = s_uint16(read(2))[0]
+
+    for __ in repeat(None, attributes_count):
+        yield (
+            # attribute_name_index
+            s_uint16(read(2))[0],
+            # info
+            b64encode(read(
+                # attribute_length
+                s_uint32(read(4))[0]
+            ))
+        )
 
 
 def parse_classfile(fobj, parse_mode=ParseMode.PARSE_ALL):
@@ -172,5 +194,47 @@ def parse_classfile(fobj, parse_mode=ParseMode.PARSE_ALL):
 
     if parse_mode == ParseMode.PARSE_INTERFACES:
         return cf
+
+    ###
+    # Parse the fields table.
+    ###
+    fields_count = s_uint16(read(2))[0]
+    cf['fields'] = [
+        (
+            # access_flags
+            s_uint16(read(2))[0],
+            # name_index
+            s_uint16(read(2))[0],
+            # descriptor_index
+            s_uint16(read(2))[0],
+            list(parse_attribute_table(fobj))
+        )
+        for __ in repeat(None, fields_count)
+    ]
+
+    if parse_mode == ParseMode.PARSE_FIELDS:
+        return cf
+
+    ###
+    # Parse the methods table.
+    ###
+    methods_count = s_uint16(read(2))[0]
+    cf['methods'] = [
+        (
+            # access_flags
+            s_uint16(read(2))[0],
+            # name_index
+            s_uint16(read(2))[0],
+            # descriptor_index
+            s_uint16(read(2))[0],
+            list(parse_attribute_table(fobj))
+        )
+        for __ in repeat(None, methods_count)
+    ]
+
+    if parse_mode == ParseMode.PARSE_METHODS:
+        return cf
+
+    cf['attributes'] = list(parse_attribute_table(fobj))
 
     return cf

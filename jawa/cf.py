@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 __all__ = (
     'parse_classfile',
+    'ParseMode'
 )
 
 from itertools import repeat
@@ -18,7 +19,15 @@ s_float = Struct('>f').unpack
 s_double = Struct('>d').unpack
 
 
-def parse_classfile(fobj):
+class ParseMode(object):
+    PARSE_ALL = 10
+    #: Stop parsing the ClassFile after the ConstantPool.
+    PARSE_CONSTANTS = 20
+    #: Stop parsing the ClassFile after the interface list.
+    PARSE_INTERFACES = 30
+
+
+def parse_classfile(fobj, parse_mode=ParseMode.PARSE_ALL):
     """
     Parses a JVM ClassFile per the The Java Virtual Machine
     Specification, Java SE 7 Edition.
@@ -27,6 +36,8 @@ def parse_classfile(fobj):
     as to JSON for a web service.
 
     :param fobj: Any file-like object providing `read()`.
+    :param parse_mode: How much of the file should be parsed before
+                       returning.
     :rtype: dict
     """
     # NOTE: This method is the major bottleneck for almost all
@@ -142,5 +153,24 @@ def parse_classfile(fobj):
             ))
         else:
             raise ParsingException('invalid tag type')
+
+    if parse_mode == ParseMode.PARSE_CONSTANTS:
+        # When building a quick search index, typically all that's
+        # needed is the ConstantPool.
+        return cf
+
+    cf['access_flags'] = s_uint16(read(2))[0]
+    cf['this_class'] = s_uint16(read(2))[0]
+    cf['super_class'] = s_uint16(read(2))[0]
+
+    # Interfaces are simply a length-prefix list of ConstantPool
+    # indexes, where the indexed value is a CONSTANT_Class.
+    cf['interfaces'] = [
+        s_uint16(read(2))[0]
+        for __ in repeat(None, s_uint16(read(2))[0])
+    ]
+
+    if parse_mode == ParseMode.PARSE_INTERFACES:
+        return cf
 
     return cf

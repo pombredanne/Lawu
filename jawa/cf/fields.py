@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 __all__ = ('Field',)
+from jawa.cf.attributes import get_attribute
 
 
 class Field(object):
@@ -8,7 +9,9 @@ class Field(object):
         self.access_flags = access_flags
         self.name_index = name
         self.descriptor_index = descriptor
-        self.attributes = attributes
+        self.attributes = [
+            get_attribute(cf, *a) for a in attributes
+        ]
 
     @property
     def name(self):

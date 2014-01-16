@@ -83,6 +83,11 @@ class String(Constant):
     def string(self):
         return self.cf.constants[self.string_index]
 
+    def __repr__(self):
+        return '<String({string!r}>'.format(
+            string=self.string
+        )
+
 
 class FieldRef(Constant):
     def __init__(self, cf, class_index, name_and_type_index):
@@ -97,6 +102,12 @@ class FieldRef(Constant):
     @property
     def name_and_type(self):
         return self.cf.constants[self.name_and_type_index]
+
+    def __repr__(self):
+        return '<FieldRef({class_}, {name})>'.format(
+            class_=self.class_.name.value,
+            name=self.name_and_type.name.value
+        )
 
 
 class MethodRef(Constant):
@@ -113,6 +124,13 @@ class MethodRef(Constant):
     def name_and_type(self):
         return self.cf.constants[self.name_and_type_index]
 
+    def __repr__(self):
+        return '<MethodRef({type_}, {class_}, {name})>'.format(
+            type_=self.name_and_type.descriptor.value,
+            class_=self.class_.name.value,
+            name=self.name_and_type.name.value
+        )
+
 
 class InterfaceMethodRef(Constant):
     def __init__(self, cf, class_index, name_and_type_index):
@@ -128,6 +146,13 @@ class InterfaceMethodRef(Constant):
     def name_and_type(self):
         return self.cf.constants[self.name_and_type_index]
 
+    def __repr__(self):
+        return '<InterfaceMethodRef({type_}, {class_}, {name})>'.format(
+            type_=self.name_and_type.descriptor.value,
+            class_=self.class_.name.value,
+            name=self.name_and_type.name.value
+        )
+
 
 class NameAndType(Constant):
     def __init__(self, cf, name_index, descriptor_index):
@@ -142,6 +167,12 @@ class NameAndType(Constant):
     @property
     def descriptor(self):
         return self.cf.constants[self.descriptor_index]
+
+    def __repr__(self):
+        return '<NameAndType({name}, {descriptor})>'.format(
+            name=self.name.value,
+            descriptor=self.descriptor.value
+        )
 
 
 #: A list containing all the Constant Pool types, ordered by the

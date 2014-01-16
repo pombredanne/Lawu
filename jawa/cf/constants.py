@@ -79,12 +79,24 @@ class String(Constant):
         super(String, self).__init__(cf)
         self.string_index = string_index
 
+    @property
+    def string(self):
+        return self.cf.constants[self.string_index]
+
 
 class FieldRef(Constant):
     def __init__(self, cf, class_index, name_and_type_index):
         super(FieldRef, self).__init__(cf)
         self.class_index = class_index
         self.name_and_type_index = name_and_type_index
+
+    @property
+    def class_(self):
+        return self.cf.constants[self.class_index]
+
+    @property
+    def name_and_type(self):
+        return self.cf.constants[self.name_and_type_index]
 
 
 class MethodRef(Constant):
@@ -93,6 +105,14 @@ class MethodRef(Constant):
         self.class_index = class_index
         self.name_and_type_index = name_and_type_index
 
+    @property
+    def class_(self):
+        return self.cf.constants[self.class_index]
+
+    @property
+    def name_and_type(self):
+        return self.cf.constants[self.name_and_type_index]
+
 
 class InterfaceMethodRef(Constant):
     def __init__(self, cf, class_index, name_and_type_index):
@@ -100,12 +120,28 @@ class InterfaceMethodRef(Constant):
         self.class_index = class_index
         self.name_and_type_index = name_and_type_index
 
+    @property
+    def class_(self):
+        return self.cf.constants[self.class_index]
+
+    @property
+    def name_and_type(self):
+        return self.cf.constants[self.name_and_type_index]
+
 
 class NameAndType(Constant):
     def __init__(self, cf, name_index, descriptor_index):
         super(NameAndType, self).__init__(cf)
         self.name_index = name_index
         self.descriptor_index = descriptor_index
+
+    @property
+    def name(self):
+        return self.cf.constants[self.name_index]
+
+    @property
+    def descriptor(self):
+        return self.cf.constants[self.descriptor_index]
 
 
 #: A list containing all the Constant Pool types, ordered by the

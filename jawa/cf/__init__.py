@@ -3,6 +3,7 @@ __all__ = ('ClassFile',)
 from jawa.parsing import parse_classfile
 from jawa.cf.constants import CONSTANTS_BY_TAG
 from jawa.cf.fields import Field
+from jawa.cf.methods import Method
 
 
 class ClassFile(object):
@@ -33,6 +34,7 @@ class ClassFile(object):
         ]
 
         self.fields = [Field(self, *f) for f in cf['fields']]
+        self.methods = [Method(self, *m) for m in cf['methods']]
 
     @property
     def major_version(self):

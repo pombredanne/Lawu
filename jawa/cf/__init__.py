@@ -2,6 +2,7 @@
 __all__ = ('ClassFile',)
 from jawa.parsing import parse_classfile
 from jawa.cf.constants import CONSTANTS_BY_TAG
+from jawa.cf.fields import Field
 
 
 class ClassFile(object):
@@ -22,6 +23,17 @@ class ClassFile(object):
                 constant[0]
             ](self, *constant[1:]))
 
+        self.access_flags = cf['access_flags']
+
+        self.this_class_index = cf['this_class']
+        self.super_class_index = cf['super_class']
+
+        self.interfaces = [
+            self.constants[i] for i in cf['interfaces']
+        ]
+
+        self.fields = [Field(self, *f) for f in cf['fields']]
+
     @property
     def major_version(self):
         return self.version[0]
@@ -29,3 +41,11 @@ class ClassFile(object):
     @property
     def minor_version(self):
         return self.version[1]
+
+    @property
+    def this_class(self):
+        return self.constants[self.this_class_index]
+
+    @property
+    def super_class(self):
+        return self.constants[self.super_class_index]

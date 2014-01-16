@@ -56,7 +56,13 @@ def parse_classfile(fobj, parse_mode=ParseMode.PARSE_ALL):
     Specification, Java SE 7 Edition.
 
     The results of this method should be easily serialized, such
-    as to JSON for a web service.
+    as to JSON for a web service. Attribute bodies are returned
+    as base64.
+
+    .. note::
+
+        Typically, you wouldn't use this method directly, but
+        use the :class:`jawa.cf.ClassFile` wrapper.
 
     :param fobj: Any file-like object providing `read()`.
     :param parse_mode: How much of the file should be parsed before

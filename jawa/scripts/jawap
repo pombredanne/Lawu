@@ -2,6 +2,11 @@
 # -*- coding: utf-8 -*-
 """jawap
 
+A jawa utility for working with JVM ClassFiles and JarFiles.
+
+Commands:
+    jawa grep           - Search for patterns in ClassFile constants.
+
 Usage:
     jawap grep <pattern> <files>... [--utf8]
 
@@ -24,6 +29,14 @@ from jawa.cf.constants import String, Utf8
 
 
 def _find(value, pattern_r):
+    """
+    Highlights and returns matching regex.
+
+    :param value: String to search.
+    :param pattern_r: Pre-compiled regex pattern.
+    :returns: A highlighted string or `None`.
+    :rtype: `None` or `str`.
+    """
     if not pattern_r.search(value):
         return None
 
@@ -46,6 +59,9 @@ def _find(value, pattern_r):
 
 
 def sub_grep(args, class_files):
+    """
+    Look for regex patterns in String and Utf8 constants.
+    """
     pattern_r = re.compile(args['<pattern>'])
 
     for cf in class_files:
@@ -61,6 +77,14 @@ def sub_grep(args, class_files):
 
 
 def _sources(files):
+    """
+    Converts an iterable of paths into ClassFiles and yields them.
+    Accepts individual .class files or JARs.
+
+    :param files: Iterable of filesystem paths.
+    """
+    # TODO: Recursively search filesystem directories for .class
+    #       files.
     for file_ in files:
         if is_zipfile(file_):
             jf = JarFile(file_)

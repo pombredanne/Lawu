@@ -17,15 +17,13 @@ Options:
 """
 import re
 import sys
-from zipfile import is_zipfile
 
 from docopt import docopt
 from colorama import init, Fore
 
 from jawa.version import __version__
-from jawa.jf import JarFile
-from jawa.cf import ClassFile
 from jawa.cf.constants import String, Utf8
+from jawa.util import classes_from_paths
 
 
 def _find(value, pattern_r):
@@ -76,32 +74,12 @@ def sub_grep(args, class_files):
                     print(result)
 
 
-def _sources(files):
-    """
-    Converts an iterable of paths into ClassFiles and yields them.
-    Accepts individual .class files or JARs.
-
-    :param files: Iterable of filesystem paths.
-    """
-    # TODO: Recursively search filesystem directories for .class
-    #       files.
-    for file_ in files:
-        if is_zipfile(file_):
-            jf = JarFile(file_)
-
-            for __, cf in jf.classes:
-                yield cf
-        else:
-            with open(file_, 'rb') as fobj:
-                yield ClassFile(fobj)
-
-
 def main(argv):
     init()
     args = docopt(__doc__, argv=argv, version=__version__)
 
     if args['grep']:
-        return sub_grep(args, _sources(args['<files>']))
+        return sub_grep(args, classes_from_paths(args['<files>']))
 
 
 if __name__ == '__main__':

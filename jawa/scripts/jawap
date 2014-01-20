@@ -1,0 +1,84 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""jawap
+
+Usage:
+    jawap grep <pattern> <files>... [--utf8]
+
+Options:
+    --utf8              When searching for strings, also search
+                        raw UTF-8 constants, which can be very large
+                        and contain unprintable characters.
+"""
+import re
+import sys
+from zipfile import is_zipfile
+
+from docopt import docopt
+from colorama import init, Fore
+
+from jawa.version import __version__
+from jawa.jf import JarFile
+from jawa.cf import ClassFile
+from jawa.cf.constants import String, Utf8
+
+
+def _find(value, pattern_r):
+    if not pattern_r.search(value):
+        return None
+
+    result = []
+
+    last_match_start = 0
+    for match in pattern_r.finditer(value):
+        start, end = match.span()
+
+        result.append(value[last_match_start:start])
+        result.append(Fore.GREEN)
+        result.append(value[start:end])
+        result.append(Fore.RESET)
+
+        last_match_start = end
+
+    result.append(value[last_match_start:])
+
+    return ''.join(result)
+
+
+def sub_grep(args, class_files):
+    pattern_r = re.compile(args['<pattern>'])
+
+    for cf in class_files:
+        for constant in cf.constants:
+            if isinstance(constant, String):
+                result = _find(constant.string.value, pattern_r)
+                if result:
+                    print(result)
+            elif args['--utf8'] and isinstance(constant, Utf8):
+                result = _find(constant.value, pattern_r)
+                if result:
+                    print(result)
+
+
+def _sources(files):
+    for file_ in files:
+        if is_zipfile(file_):
+            jf = JarFile(file_)
+
+            for __, cf in jf.classes:
+                yield cf
+        else:
+            with open(file_, 'rb') as fobj:
+                yield ClassFile(fobj)
+
+
+def main(argv):
+    init()
+    args = docopt(__doc__, argv=argv, version=__version__)
+
+    if args['grep']:
+        return sub_grep(args, _sources(args['<files>']))
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

@@ -8,12 +8,13 @@ Commands:
     jawa grep           - Search for patterns in ClassFile constants.
 
 Usage:
-    jawap grep <pattern> <files>... [--utf8]
+    jawap grep <pattern> <files>... [--utf8 --this]
 
 Options:
     --utf8              When searching for strings, also search
                         raw UTF-8 constants, which can be very large
                         and contain unprintable characters.
+    --this              Display the class where a match was found.
 """
 import re
 import sys
@@ -63,14 +64,26 @@ def sub_grep(args, class_files):
     pattern_r = re.compile(args['<pattern>'])
 
     for cf in class_files:
+        results = []
+
         for constant in cf.constants:
             if isinstance(constant, String):
                 result = _find(constant.string.value, pattern_r)
-                if result:
-                    print(result)
             elif args['--utf8'] and isinstance(constant, Utf8):
                 result = _find(constant.value, pattern_r)
-                if result:
+            else:
+                continue
+
+            if result:
+                results.append(result)
+
+        if results:
+            if args['--this']:
+                # We just want to display the name of the class
+                # where at least one result was found.
+                print(cf.this_class.name.value)
+            else:
+                for result in results:
                     print(result)
 
 

@@ -27,3 +27,13 @@ class Field(object):
             descriptor=self.descriptor.value,
             name=self.name.value
         )
+
+    @property
+    def value(self):
+        """
+        A shortcut for the field's ConstantValue attribute, if one is
+        set.
+        """
+        for attr in self.attributes:
+            if attr.name == 'ConstantValue':
+                return attr.constantvalue

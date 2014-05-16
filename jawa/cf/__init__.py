@@ -26,19 +26,13 @@ class ClassFile(object):
             ](self, *constant[1:]))
 
         self.access_flags = cf['access_flags']
-
         self.this_class_index = cf['this_class']
         self.super_class_index = cf['super_class']
 
-        self.interfaces = [
-            self.constants[i] for i in cf['interfaces']
-        ]
-
+        self.interfaces = [constants[i] for i in cf['interfaces']]
         self.fields = [Field(self, *f) for f in cf['fields']]
         self.methods = [Method(self, *m) for m in cf['methods']]
-        self.attributes = [
-            get_attribute(self, *a) for a in cf['attributes']
-        ]
+        self.attributes = [get_attribute(self, *a) for a in cf['attributes']]
 
     @property
     def major_version(self):

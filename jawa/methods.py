@@ -71,7 +71,8 @@ class Method(object):
 
     def _to_io(self, fout):
         fout.write(self.access_flags.pack())
-        fout.write(pack('>HH',
+        fout.write(pack(
+            '>HH',
             self._name_index,
             self._descriptor_index
         ))
@@ -104,8 +105,8 @@ class MethodTable(object):
         ``None``, add a `Code` attribute to this method.
         """
         method = Method(self._cf)
-        name = self._cf.constants.create_utf8(name)
-        descriptor = self._cf.constants.create_utf8(descriptor)
+        name = self._cf.constants.utf8(name)
+        descriptor = self._cf.constants.utf8(descriptor)
         method._name_index = name.index
         method._descriptor_index = descriptor.index
         method.access_flags.acc_public = True

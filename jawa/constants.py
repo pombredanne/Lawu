@@ -255,7 +255,7 @@ class ConstantPool(object):
         except StopIteration:
             return None
 
-    def create_utf8(self, value):
+    def utf8(self, value):
         """
         Creates a new :class:`ConstantUTF8`, adding it to the pool and
         returning it.
@@ -265,7 +265,7 @@ class ConstantPool(object):
         self.append((1, unicode(value)))
         return self.get(self.raw_count - 1)
 
-    def create_integer(self, value):
+    def integer(self, value):
         """
         Creates a new :class:`ConstantInteger`, adding it to the pool and
         returning it.
@@ -275,7 +275,7 @@ class ConstantPool(object):
         self.append((3, value))
         return self.get(self.raw_count - 1)
 
-    def create_float(self, value):
+    def float(self, value):
         """
         Creates a new :class:`ConstantFloat`, adding it to the pool and
         returning it.
@@ -285,7 +285,7 @@ class ConstantPool(object):
         self.append((4, value))
         return self.get(self.raw_count - 1)
 
-    def create_long(self, value):
+    def long(self, value):
         """
         Creates a new :class:`ConstantLong`, adding it to the pool and
         returning it.
@@ -296,7 +296,7 @@ class ConstantPool(object):
         self.append(None)
         return self.get(self.raw_count - 2)
 
-    def create_double(self, value):
+    def double(self, value):
         """
         Creates a new :class:`ConstantDouble`, adding it to the pool and
         returning it.
@@ -307,7 +307,7 @@ class ConstantPool(object):
         self.append(None)
         return self.get(self.raw_count - 2)
 
-    def create_class(self, name):
+    def class_(self, name):
         """
         Creates a new :class:`ConstantClass`, adding it to the pool and
         returning it.
@@ -316,11 +316,11 @@ class ConstantPool(object):
         """
         self.append((
             7,
-            self.create_utf8(name).index
+            self.utf8(name).index
         ))
         return self.get(self.raw_count - 1)
 
-    def create_string(self, value):
+    def string(self, value):
         """
         Creates a new :class:`ConstantString`, adding it to the pool and
         returning it.
@@ -329,11 +329,11 @@ class ConstantPool(object):
         """
         self.append((
             8,
-            self.create_utf8(value).index
+            self.utf8(value).index
         ))
         return self.get(self.raw_count - 1)
 
-    def create_name_and_type(self, name, descriptor):
+    def name_and_type(self, name, descriptor):
         """
         Creates a new :class:`ConstantNameAndType`, adding it to the pool and
         returning it.
@@ -343,12 +343,12 @@ class ConstantPool(object):
         """
         self.append((
             12,
-            self.create_utf8(name).index,
-            self.create_utf8(descriptor).index
+            self.utf8(name).index,
+            self.utf8(descriptor).index
         ))
         return self.get(self.raw_count - 1)
 
-    def create_field_ref(self, class_, field, descriptor):
+    def field_ref(self, class_, field, descriptor):
         """
         Creates a new :class:`ConstantFieldRef`, adding it to the pool and
         returning it.
@@ -359,12 +359,12 @@ class ConstantPool(object):
         """
         self.append((
             9,
-            self.create_class(class_).index,
-            self.create_name_and_type(field, descriptor).index
+            self.class_(class_).index,
+            self.name_and_type(field, descriptor).index
         ))
         return self.get(self.raw_count - 1)
 
-    def create_method_ref(self, class_, method, descriptor):
+    def method_ref(self, class_, method, descriptor):
         """
         Creates a new :class:`ConstantMethodRef`, adding it to the pool and
         returning it.
@@ -375,12 +375,12 @@ class ConstantPool(object):
         """
         self.append((
             10,
-            self.create_class(class_).index,
-            self.create_name_and_type(method, descriptor).index
+            self.class_(class_).index,
+            self.name_and_type(method, descriptor).index
         ))
         return self.get(self.raw_count - 1)
 
-    def create_interface_method_ref(self, class_, if_method, descriptor):
+    def interface_method_ref(self, class_, if_method, descriptor):
         """
         Creates a new :class:`ConstantInterfaceMethodRef`, adding it to the
         pool and returning it.
@@ -391,8 +391,8 @@ class ConstantPool(object):
         """
         self.append((
             11,
-            self.create_class(class_).index,
-            self.create_name_and_type(if_method, descriptor).index
+            self.class_(class_).index,
+            self.name_and_type(if_method, descriptor).index
         ))
         return self.get(self.raw_count - 1)
 

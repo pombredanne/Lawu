@@ -15,13 +15,13 @@ if __name__ == '__main__':
     main.code.max_stack = 2
 
     main.code.assemble(assemble([
-        ('getstatic', cf.constants.create_field_ref(
+        ('getstatic', cf.constants.field_ref(
             'java/lang/System',
             'out',
             'Ljava/io/PrintStream;'
         )),
-        ('ldc', cf.constants.create_string('Hello World!')),
-        ('invokevirtual', cf.constants.create_method_ref(
+        ('ldc', cf.constants.string('Hello World!')),
+        ('invokevirtual', cf.constants.method_ref(
             'java/io/PrintStream',
             'println',
             '(Ljava/lang/String;)V'

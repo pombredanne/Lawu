@@ -25,7 +25,7 @@ CodeException = namedtuple('CodeException', [
 class CodeAttribute(Attribute):
     @classmethod
     def create(cls, cf):
-        c = cls(cf, cf.constants.create_utf8('Code').index)
+        c = cls(cf, cf.constants.utf8('Code').index)
         c._max_stack = 0
         c._max_locals = 0
         c._ex_table = []

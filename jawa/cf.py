@@ -111,8 +111,8 @@ class ClassFile(object):
         class_file = ClassFile()
         class_file.access_flags.acc_public = True
         class_file.access_flags.acc_super = True
-        class_file.this = class_file.constants.create_class(this).index
-        class_file.super_ = class_file.constants.create_class(super_).index
+        class_file.this = class_file.constants.class_(this).index
+        class_file.super_ = class_file.constants.class_(super_).index
 
         return class_file
 

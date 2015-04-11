@@ -90,7 +90,7 @@ class ClassFile(object):
         self.attributes = AttributeTable(self)
 
         if fio:
-            self._from_io(fio)
+            self.load_from_io(fio)
 
     @classmethod
     def create(cls, this, super_='java/lang/Object'):
@@ -144,7 +144,7 @@ class ClassFile(object):
         self.methods._to_io(fout)
         self.attributes._to_io(fout)
 
-    def _from_io(self, fio):
+    def load_from_io(self, fio):
         """
         Loads an existing JVM ClassFile from any file-like object.
         """
@@ -156,7 +156,7 @@ class ClassFile(object):
         # The version is swapped on disk to (minor, major), so swap it back.
         self.version = unpack('>HH', fio.read(4))[::-1]
 
-        self.constants._from_io(fio)
+        self.constants.load_from_io(fio)
 
         # ClassFile access_flags, see section #4.1 of the JVM specs.
         self.access_flags.unpack(read(2))
@@ -169,6 +169,6 @@ class ClassFile(object):
             read(2 * interfaces_count)
         )
 
-        self.fields._from_io(fio)
-        self.methods._from_io(fio)
-        self.attributes._from_io(fio)
+        self.fields.load_from_io(fio)
+        self.methods.load_from_io(fio)
+        self.attributes.load_from_io(fio)

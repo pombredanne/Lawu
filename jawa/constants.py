@@ -396,7 +396,7 @@ class ConstantPool(object):
         ))
         return self.get(self.raw_count - 1)
 
-    def _from_io(self, fio):
+    def load_from_io(self, fio):
         # Reads in the ConstantPool (constant_pool in the JVM Spec)
         constant_pool_count = unpack('>H', fio.read(2))[0]
 

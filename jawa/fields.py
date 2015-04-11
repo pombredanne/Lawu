@@ -51,10 +51,10 @@ class Field(object):
         constant_value = self.attributes.find_one(name='ConstantValue')
         return constant_value
 
-    def _from_io(self, fio):
+    def load_from_io(self, fio):
         self.access_flags.unpack(fio.read(2))
         self._name_index, self._descriptor_index = unpack('>HH', fio.read(4))
-        self._attributes._from_io(fio)
+        self._attributes.load_from_io(fio)
 
     def _to_io(self, fout):
         fout.write(self.access_flags.pack())
@@ -124,11 +124,11 @@ class FieldTable(object):
         for field in self._table:
             yield field
 
-    def _from_io(self, fio):
+    def load_from_io(self, fio):
         field_count = unpack('>H', fio.read(2))[0]
         for _ in repeat(None, field_count):
             field = Field(self._cf)
-            field._from_io(fio)
+            field.load_from_io(fio)
             self.append(field)
 
     def _to_io(self, fout):

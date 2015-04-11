@@ -67,7 +67,7 @@ class AttributeTable(object):
         """
         return default_parsers.get(name, UnknownAttribute)
 
-    def _from_io(self, fio):
+    def load_from_io(self, fio):
         """
         Loads an existing `AttributeTable` from the file-like object
         `fio`.

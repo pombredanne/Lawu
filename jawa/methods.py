@@ -64,10 +64,10 @@ class Method(object):
         """
         return self.attributes.find_one(name='Code')
 
-    def _from_io(self, fio):
+    def load_from_io(self, fio):
         self.access_flags.unpack(fio.read(2))
         self._name_index, self._descriptor_index = unpack('>HH', fio.read(4))
-        self._attributes._from_io(fio)
+        self._attributes.load_from_io(fio)
 
     def _to_io(self, fout):
         fout.write(self.access_flags.pack())
@@ -121,11 +121,11 @@ class MethodTable(object):
         for method in self._table:
             yield method
 
-    def _from_io(self, fio):
+    def load_from_io(self, fio):
         method_count = unpack('>H', fio.read(2))[0]
         for _ in repeat(None, method_count):
             method = Method(self._cf)
-            method._from_io(fio)
+            method.load_from_io(fio)
             self.append(method)
 
     def _to_io(self, fout):

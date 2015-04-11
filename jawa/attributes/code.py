@@ -46,7 +46,7 @@ class CodeAttribute(Attribute):
                 *unpack('>HHHH', fio.read(8))
             ))
         self._attributes = AttributeTable(self._cf)
-        self._attributes._from_io(fio)
+        self._attributes.load_from_io(fio)
         fio.close()
 
     @property

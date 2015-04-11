@@ -1,7 +1,6 @@
 # -*- coding: utf8 -*-
 """
-The :mod:`jawa.cf` module provides tools for working with JVM ``.class``
-ClassFiles.
+Tools for working with JVM ClassFiles (`.class`)
 """
 __all__ = ('ClassFile', 'ClassVersion')
 from struct import pack, unpack
@@ -16,13 +15,19 @@ from jawa.util.flags import Flags
 
 
 class ClassVersion(namedtuple('ClassVersion', ['major', 'minor'])):
+    """
+    Specifies a specific JVM version targetted by an assembled ClassFile.
+    """
     __slots__ = ()
 
     @property
     def human(self):
         """
-        A human-readable string identifying this version, or ``None``
-        if it is unknown.
+        A human-readable string identifying the version if known.
+
+        For example, a ClassVersion with a major version identifier of 0x2E
+        would return "JDK1_2". A ClassVersion with a major version identifier
+        of 0x10 would return `None` since it's an unknown version.
         """
         return {
             0x33: 'J2SE_7',
@@ -36,8 +41,9 @@ class ClassVersion(namedtuple('ClassVersion', ['major', 'minor'])):
 
 
 class ClassFile(object):
+    # pylint:disable=too-many-instance-attributes
     """
-    Implements the JVM ClassFile (files typically ending in ``.class``).
+    Implements the JVM ClassFile (files typically ending in `.class`).
 
     To open an existing ClassFile::
 
@@ -57,13 +63,6 @@ class ClassFile(object):
         with open('HelloWorld.class', 'wb') as fout:
             cf.save(fout)
 
-    :meth:`~ClassFile.create` sets up some reasonable defaults equivelent to:
-
-    .. code-block:: java
-
-        public class HelloWorld extends java.lang.Object{
-        }
-
     :param fio: any file-like object providing ``.read()``.
     """
     #: The JVM ClassFile magic number.
@@ -71,9 +70,9 @@ class ClassFile(object):
 
     def __init__(self, fio=None):
         # Default to J2SE_7
-        self._version = ClassVersion(0x32, 0)
-        self._constants = ConstantPool()
-        self._access_flags = Flags('>H', {
+        self.version = ClassVersion(0x32, 0)
+        self.constants = ConstantPool()
+        self.access_flags = Flags('>H', {
             'acc_public': 0x0001,
             'acc_final': 0x0010,
             'acc_super': 0x0020,
@@ -83,12 +82,12 @@ class ClassFile(object):
             'acc_annotation': 0x2000,
             'acc_enum': 0x4000
         })
-        self._this = 0
-        self._super = 0
-        self._interfaces = []
-        self._fields = FieldTable(self)
-        self._methods = MethodTable(self)
-        self._attributes = AttributeTable(self)
+        self.this = 0
+        self.super_ = 0
+        self.interfaces = []
+        self.fields = FieldTable(self)
+        self.methods = MethodTable(self)
+        self.attributes = AttributeTable(self)
 
         if fio:
             self._from_io(fio)
@@ -96,20 +95,26 @@ class ClassFile(object):
     @classmethod
     def create(cls, this, super_='java/lang/Object'):
         """
-        A utility method which sets up reasonable defaults for a new public
-        class.
+        A utility method which sets up reasonable defaults.
+
+        This method returns a ClassFile instance identical to this
+        equivelent Java:
+
+        .. code-block:: java
+
+            public class HelloWorld extends java.lang.Object{
+            }
 
         :param this: The name of this class.
         :param super_: The name of this class's superclass.
         """
-        cf = ClassFile()
-        cf.access_flags.acc_public = True
-        cf.access_flags.acc_super = True
+        class_file = ClassFile()
+        class_file.access_flags.acc_public = True
+        class_file.access_flags.acc_super = True
+        class_file.this = class_file.constants.create_class(this).index
+        class_file.super_ = class_file.constants.create_class(super_).index
 
-        cf._this = cf.constants.create_class(this).index
-        cf._super = cf.constants.create_class(super_).index
-
-        return cf
+        return class_file
 
     def save(self, fout):
         """
@@ -124,24 +129,20 @@ class ClassFile(object):
             self.version.major
         ))
 
-        self._constants._to_io(fout)
+        self.constants._to_io(fout)
 
         write(self.access_flags.pack())
         write(pack(
-            '>HHH{0}H'.format(len(self._interfaces)),
-            self._this,
-            self._super,
-            len(self._interfaces),
-            *self._interfaces
+            '>HHH{0}H'.format(len(self.interfaces)),
+            self.this,
+            self.super_,
+            len(self.interfaces),
+            *self.interfaces
         ))
 
-        self._fields._to_io(fout)
-        self._methods._to_io(fout)
-        self._attributes._to_io(fout)
-
-    # ------------
-    # Internal
-    # ------------
+        self.fields._to_io(fout)
+        self.methods._to_io(fout)
+        self.attributes._to_io(fout)
 
     def _from_io(self, fio):
         """
@@ -155,106 +156,19 @@ class ClassFile(object):
         # The version is swapped on disk to (minor, major), so swap it back.
         self.version = unpack('>HH', fio.read(4))[::-1]
 
-        self._constants._from_io(fio)
+        self.constants._from_io(fio)
 
         # ClassFile access_flags, see section #4.1 of the JVM specs.
         self.access_flags.unpack(read(2))
 
         # The CONSTANT_Class indexes for "this" class and its superclass.
         # Interfaces are a simple list of CONSTANT_Class indexes.
-        self._this, self._super, interfaces_count = unpack('>HHH', read(6))
+        self.this, self.super_, interfaces_count = unpack('>HHH', read(6))
         self._interfaces = unpack(
             '>{0}H'.format(interfaces_count),
             read(2 * interfaces_count)
         )
 
-        self._fields._from_io(fio)
-        self._methods._from_io(fio)
-        self._attributes._from_io(fio)
-
-    # -------------
-    # Properties
-    # -------------
-
-    @property
-    def version(self):
-        """
-        The :class:`~jawa.cf.ClassVersion` for this class.
-
-        Example::
-
-            >>> cf = ClassFile.create('HelloWorld')
-            >>> cf.version = 51, 0
-            >>> print(cf.version)
-            ClassVersion(major=51, minor=0)
-            >>> print(cf.version.major)
-            51
-        """
-        return self._version
-
-    @version.setter
-    def version(self, (major, minor)):
-        self._version = ClassVersion(major, minor)
-
-    @property
-    def constants(self):
-        """
-        The :class:`~jawa.cp.ConstantPool` for this class.
-        """
-        return self._constants
-
-    @property
-    def access_flags(self):
-        return self._access_flags
-
-    @property
-    def this(self):
-        """
-        The :class:`~jawa.constants.ConstantClass` which represents this class.
-        """
-        return self.constants.get(self._this)
-
-    @this.setter
-    def this(self, value):
-        self._this = value.index
-
-    @property
-    def super_(self):
-        """
-        The :class:`~jawa.constants.ConstantClass` which represents this
-        class's superclass.
-        """
-        return self.constants.get(self._super)
-
-    @super_.setter
-    def super_(self, value):
-        self._super = value.index
-
-    @property
-    def interfaces(self):
-        """
-        A list of direct superinterfaces of this class as indexes into
-        the constant pool, in left-to-right order.
-        """
-        return self._interfaces
-
-    @property
-    def fields(self):
-        """
-        The :class:`~jawa.fields.FieldTable` for this class.
-        """
-        return self._fields
-
-    @property
-    def methods(self):
-        """
-        The :class:`~jawa.methods.MethodTable` for this class.
-        """
-        return self._methods
-
-    @property
-    def attributes(self):
-        """
-        The :class:`~jawa.attribute.AttributeTable` for this class.
-        """
-        return self._attributes
+        self.fields._from_io(fio)
+        self.methods._from_io(fio)
+        self.attributes._from_io(fio)
